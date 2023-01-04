@@ -8,7 +8,11 @@ const path = __nccwpck_require__(1017);
 const core = __nccwpck_require__(8890);
 const tc = __nccwpck_require__(8766);
 
-const { getDownloadObject, getLatestVersion,setUpAuth } = __nccwpck_require__(2577);
+const {
+  getDownloadObject,
+  getLatestVersion,
+  setUpAuth,
+} = __nccwpck_require__(2577);
 
 async function setup() {
   try {
@@ -24,14 +28,17 @@ async function setup() {
     // Download the specific version of the tool, e.g. as a tarball/zipball
     const download = getDownloadObject(version);
     core.info(`Downloading ${download.url}`);
+
     const pathToTarball = await tc.downloadTool(download.url);
+    core.info(`Downloaded to ${pathToTarball}`);
 
     // Extract the tarball/zipball onto host runner
     const extract = download.url.endsWith('.zip') ? tc.extractZip : tc.extractTar;
     const pathToCLI = await extract(pathToTarball);
 
+    core.info(`Add ${pathToCLI} to PATH`);
     // Expose the tool by adding it to the PATH
-    core.addPath(path.join(pathToCLI, download.binPath));
+    core.addPath(pathToCLI);
 
     await setUpAuth(publicKey, privateKey);
   } catch (e) {
@@ -91,12 +98,10 @@ function mapOS(osName) {
 function getDownloadObject(version) {
   const platform = os.platform();
   const filename = `ticloud_${version}_${mapOS(platform)}_${mapArch(os.arch())}`;
-  const extension = platform === 'win32' ? 'zip' : 'tar.gz';
-  const binPath = platform === 'win32' ? 'bin' : path.join(filename, 'bin');
+  const extension = platform === "win32" ? "zip" : "tar.gz";
   const url = `https://github.com/tidbcloud/tidbcloud-cli/releases/download/v${version}/${filename}.${extension}`;
   return {
     url,
-    binPath,
   };
 }
 
