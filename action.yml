@@ -1,0 +1,27 @@
+name: 'Set up tidbcloud cli'
+description: |-
+  Downloads, installs, and configures a `ticloud` environment.
+  Adds the `ticloud` CLI command to the $PATH.
+inputs:
+  version:  
+    description: |-
+      Version of the `ticloud` to install. If unspecified or set to "latest",
+      the latest available `ticloud` version for the target platform will be
+      installed. Example: "0.1.6".
+    required: false
+    default: latest
+  api_public_key:
+    description: |-
+      The public key of TiDB Cloud api.
+    required: true
+  api_private_key:
+    description: |-
+      The private key of TiDB Cloud api.
+    required: true
+
+branding:
+  icon: 'terminal'
+  color: 'gray-dark'
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
