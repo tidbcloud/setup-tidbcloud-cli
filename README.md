@@ -3,7 +3,7 @@
 The `tidbcloud/setup-tidbcloud-cli` action is a JavaScript action that sets up `ticloud` in your GitHub Actions workflow by:
 
 - Downloading a specific version of `ticloud` and adding it to the `PATH`.
-- Configuring `ticlooud` with API token.
+- Configuring `ticloud` with API token.
 
 ## Prerequisites
 
