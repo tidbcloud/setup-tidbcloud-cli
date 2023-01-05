@@ -3,7 +3,7 @@ description: |-
   Downloads, installs, and configures a `ticloud` environment.
   Adds the `ticloud` CLI command to the $PATH.
 inputs:
-  version:  
+  version:
     description: |-
       Version of the `ticloud` to install. If unspecified or set to "latest",
       the latest available `ticloud` version for the target platform will be
