@@ -23,11 +23,23 @@ This action can be run on `ubuntu-latest`, `windows-latest`, and `macos-latest` 
 ```yaml
 uses: tidbcloud/setup-tidbcloud-cli@v0
 with:
+  github_token: ${{ secrets.GITHUB_TOKEN }}
   api_public_key: ${{ secrets.TIDB_CLOUD_API_PUBLIC_KEY }}
   api_private_key: ${{ secrets.TIDB_CLOUD_API_PRIVATE_KEY }}
 ```
 
-A specific version of Terraform CLI can be installed:
+This is equivalent to:
+
+```yaml
+uses: tidbcloud/setup-tidbcloud-cli@v0
+with:
+  version: latest
+  github_token: ${{ secrets.GITHUB_TOKEN }}
+  api_public_key: ${{ secrets.TIDB_CLOUD_API_PUBLIC_KEY }}
+  api_private_key: ${{ secrets.TIDB_CLOUD_API_PRIVATE_KEY }}
+```
+
+A specific version of `ticloud` can be installed:
 
 ```yaml
 uses: tidbcloud/setup-tidbcloud-cli@v0
@@ -43,6 +55,7 @@ The action supports the following inputs:
 
 - `api_public_key` - (required) The public key of TiDB Cloud api.
 - `api_private_key` - (required) The private key of TiDB Cloud api.
+- `github_token` - (optional) The `secret.GITHUB_TOKEN` of the repository. If the version is not specified or equals to `latest`, this input is required.
 - `version` - (optional) The version of `ticloud` to install, defaulting to latest version.
 
 ## License

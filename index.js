@@ -13,9 +13,14 @@ async function setup() {
     let version = core.getInput('version');
     const privateKey = core.getInput('api_private_key');
     const publicKey = core.getInput('api_public_key');
+    const token = core.getInput('github_token');
 
     if (!version || version === 'latest') {
-      version = await getLatestVersion();
+      if (!token) {
+        throw new Error('Please set the `github_token` input.');
+      }
+
+      version = await getLatestVersion(token);
     }
 
     // Remove leading 'v' if present
