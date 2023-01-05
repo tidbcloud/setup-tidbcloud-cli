@@ -18,6 +18,11 @@ async function setup() {
       version = await getLatestVersion();
     }
 
+    // Remove leading 'v' if present
+    if (version.startsWith('v')) {
+      version = version.slice(1);
+    }
+
     // Download the specific version of the tool, e.g. as a tarball/zipball
     const download = getDownloadObject(version);
     core.info(`Downloading ${download.url}`);

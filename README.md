@@ -21,7 +21,7 @@ The `tidbcloud/setup-tidbcloud-cli` action is a JavaScript action that sets up `
 This action can be run on `ubuntu-latest`, `windows-latest`, and `macos-latest` GitHub Actions runners. When running on `windows-latest` the shell should be set to Bash.
 
 ```yaml
-uses: tidbcloud/setup-tidbcloud-cli@v1
+uses: tidbcloud/setup-tidbcloud-cli@v0
 with:
   api_public_key: ${{ secrets.TIDB_CLOUD_API_PUBLIC_KEY }}
   api_private_key: ${{ secrets.TIDB_CLOUD_API_PRIVATE_KEY }}
@@ -30,7 +30,7 @@ with:
 A specific version of Terraform CLI can be installed:
 
 ```yaml
-uses: tidbcloud/setup-tidbcloud-cli@v1
+uses: tidbcloud/setup-tidbcloud-cli@v0
 with:
   version: 0.1.6
   api_public_key: ${{ secrets.TIDB_CLOUD_API_PUBLIC_KEY }}
