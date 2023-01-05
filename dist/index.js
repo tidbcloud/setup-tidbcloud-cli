@@ -65,6 +65,7 @@ if (require.main === require.cache[eval('__filename')]) {
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const os = __nccwpck_require__(2037);
+const core = __nccwpck_require__(2186);
 const http = __nccwpck_require__(6255);
 const exec = __nccwpck_require__(1514);
 
@@ -74,6 +75,7 @@ async function getLatestVersion() {
     'https://api.github.com/repos/tidbcloud/tidbcloud-cli/releases/latest',
   );
   const body = await res.readBody();
+  core.debug(`${res.message.statusCode}: ${body}`);
   const versionJson = JSON.parse(body);
   return versionJson.tag_name;
 }
