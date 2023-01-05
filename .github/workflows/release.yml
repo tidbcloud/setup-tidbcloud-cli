@@ -1,4 +1,4 @@
-name: Main
+name: Release
 
 on:
   push:
@@ -11,5 +11,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          gh api repos/$GITHUB_REPOSITORY/releases/generate-notes \
+            -f tag_name="${GITHUB_REF#refs/tags/}" \
+            -f target_commitish=main \
+            -q .body > .CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
       - name: Release
         uses: softprops/action-gh-release@v1
+        with:
+          body_path: .CHANGELOG.md
