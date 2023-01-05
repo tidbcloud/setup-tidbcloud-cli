@@ -18,6 +18,10 @@ inputs:
     description: |-
       The private key of TiDB Cloud api.
     required: true
+  github_token:
+    description: |-
+      The secrets.GITHUB_TOKEN of the project.
+    required: true
 
 branding:
   icon: 'terminal'
