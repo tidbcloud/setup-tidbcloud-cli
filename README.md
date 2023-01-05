@@ -7,7 +7,7 @@ The `tidbcloud/setup-tidbcloud-cli` action is a JavaScript action that sets up `
 
 ## Prerequisites
 
--  This action requires TiDB Cloud API Key to execute `ticloud` commands.
+- This action requires TiDB Cloud API Key to execute `ticloud` commands.
   See [Authentication](https://docs.pingcap.com/tidbcloud/api/v1beta#section/Authentication) for more details.
 - This action only support follwing runners:
 
@@ -17,6 +17,7 @@ The `tidbcloud/setup-tidbcloud-cli` action is a JavaScript action that sets up `
 | amd64                | ✔     | ✔     | ✔       |
 
 ## Usage
+
 This action can be run on `ubuntu-latest`, `windows-latest`, and `macos-latest` GitHub Actions runners. When running on `windows-latest` the shell should be set to Bash.
 
 ```yaml
@@ -45,5 +46,5 @@ The action supports the following inputs:
 - `version` - (optional) The version of `ticloud` to install, defaulting to latest version.
 
 ## License
- 
+
 See [LICENSE](LICENSE).
