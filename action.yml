@@ -20,8 +20,9 @@ inputs:
     required: true
   github_token:
     description: |-
-      The secrets.GITHUB_TOKEN of the project.
-    required: true
+      The secrets.GITHUB_TOKEN of the repository.
+      If the version is not specified or equals to `latest`, this input is required.
+    required: false
 
 branding:
   icon: 'terminal'

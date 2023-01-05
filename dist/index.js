@@ -22,6 +22,10 @@ async function setup() {
     const token = core.getInput('github_token');
 
     if (!version || version === 'latest') {
+      if (!token) {
+        throw new Error('Please set the `github_token` input.');
+      }
+
       version = await getLatestVersion(token);
     }
 
