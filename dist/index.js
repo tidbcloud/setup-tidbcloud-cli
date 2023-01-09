@@ -79,11 +79,7 @@ async function getLatestVersion() {
   const url =
     'https://raw.githubusercontent.com/tidbcloud/tidbcloud-cli/main/latest-version';
   const response = await client.get(url);
-  core.debug(
-    `Response status code: ${
-      response.message.statusCode
-    }, body: ${response.readBody()}`,
-  );
+  core.debug(`Response status code: ${response.message.statusCode}`);
   return response.readBody();
 }
 
