@@ -1,5 +1,6 @@
 const core = require('@actions/core');
 const tc = require('@actions/tool-cache');
+const isSemver = require('is-semver');
 
 const {
   getDownloadObject,
@@ -13,14 +14,13 @@ async function setup() {
     let version = core.getInput('version');
     const privateKey = core.getInput('api_private_key');
     const publicKey = core.getInput('api_public_key');
-    const token = core.getInput('github_token');
 
     if (!version || version === 'latest') {
-      if (!token) {
-        throw new Error('Please set the `github_token` input.');
-      }
+      version = await getLatestVersion();
+    }
 
-      version = await getLatestVersion(token);
+    if (!isSemver(version)) {
+      throw new Error(`Invalid version: ${version}`);
     }
 
     // Remove leading 'v' if present
