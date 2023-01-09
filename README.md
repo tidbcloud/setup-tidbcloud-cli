@@ -5,15 +5,6 @@ The `tidbcloud/setup-tidbcloud-cli` action is a JavaScript action that sets up [
 - Downloading a specific version of `ticloud` and adding it to the `PATH`.
 - Configuring `ticloud` with API token.
 
-## Table of Contents
-
-- [setup-tidbcloud-cli](#setup-tidbcloud-cli)
-  - [Table of Contents](#table-of-contents)
-  - [Prerequisites](#prerequisites)
-  - [Usage](#usage)
-  - [Inputs](#inputs)
-  - [License](#license)
-
 ## Prerequisites
 
 - This action requires TiDB Cloud API Key to execute `ticloud` commands.
