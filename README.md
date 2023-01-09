@@ -1,6 +1,6 @@
 # setup-tidbcloud-cli
 
-The `tidbcloud/setup-tidbcloud-cli` action is a JavaScript action that sets up `ticloud` in your GitHub Actions workflow by:
+The `tidbcloud/setup-tidbcloud-cli` action is a JavaScript action that sets up [`ticloud`](https://github.com/tidbcloud/tidbcloud-cli) in your GitHub Actions workflow by:
 
 - Downloading a specific version of `ticloud` and adding it to the `PATH`.
 - Configuring `ticloud` with API token.
@@ -9,7 +9,7 @@ The `tidbcloud/setup-tidbcloud-cli` action is a JavaScript action that sets up `
 
 - This action requires TiDB Cloud API Key to execute `ticloud` commands.
   See [Authentication](https://docs.pingcap.com/tidbcloud/api/v1beta#section/Authentication) for more details.
-- This action only support follwing runners:
+- This action only support following runners:
 
 | Architecture Support | macOS | Linux | Windows |
 | -------------------- | ----- | ----- | ------- |
