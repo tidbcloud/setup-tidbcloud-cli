@@ -19,6 +19,7 @@ The `tidbcloud/setup-tidbcloud-cli` action is a JavaScript action that sets up [
 ## Usage
 
 This action can be run on `ubuntu-latest`, `windows-latest`, and `macos-latest` GitHub Actions runners. When running on `windows-latest` the shell should be set to Bash.
+See [Prerequisites](#prerequisites) on how to get API key and then set them to repository secrets.
 
 ```yaml
 uses: tidbcloud/setup-tidbcloud-cli@v0
@@ -27,7 +28,7 @@ with:
   api_private_key: ${{ secrets.TIDB_CLOUD_API_PRIVATE_KEY }}
 ```
 
-A specific version of `ticloud` can be installed:
+A specific version of `ticloud` can be installed(Releases can be found [here](https://github.com/tidbcloud/tidbcloud-cli/releases)):
 
 ```yaml
 uses: tidbcloud/setup-tidbcloud-cli@v0
