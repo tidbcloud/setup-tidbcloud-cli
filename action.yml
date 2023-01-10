@@ -20,8 +20,8 @@ inputs:
     required: true
 
 branding:
-  icon: 'terminal'
-  color: 'gray-dark'
+  icon: 'upload-cloud'
+  color: 'red'
 runs:
   using: 'node16'
   main: 'dist/index.js'
