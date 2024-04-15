@@ -13,8 +13,8 @@ The `tidbcloud/setup-tidbcloud-cli` action is a JavaScript action that sets up [
 
 | Architecture Support | macOS | Linux | Windows |
 | -------------------- | ----- | ----- | ------- |
-| arm64                | ✔     | ✔     | ✘       |
-| amd64                | ✔     | ✔     | ✔       |
+| arm64                | ✔    | ✔    | ✘       |
+| amd64                | ✔    | ✔    | ✔      |
 
 ## Usage
 
