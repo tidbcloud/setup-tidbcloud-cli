@@ -1,28 +1,100 @@
 name: Release
 
+# workflow_run uses the workflow on the default branch, not the tagged commit.
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_run:
+    workflows: ['Check dist']
+    types: [completed]
+
+permissions: {}
 
 jobs:
-  build:
+  verify:
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.head_branch, 'v') &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      tag: ${{ steps.verify.outputs.tag }}
+      sha: ${{ steps.verify.outputs.sha }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          gh api repos/$GITHUB_REPOSITORY/releases/generate-notes \
-            -f tag_name="${GITHUB_REF#refs/tags/}" \
-            -f target_commitish=main \
-            -q .body > .CHANGELOG.md
+      - name: Require a protected release environment
         env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-
-      - name: Release
-        uses: softprops/action-gh-release@v1
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh api "repos/$GH_REPO/environments/release" | jq -e \
+            '[.protection_rules[] | select(.type == "required_reviewers" and (.reviewers | length > 0))] | length > 0'
+      - name: Checkout tagged source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          body_path: .CHANGELOG.md
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Checkout trusted build dependencies
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: 8f5abeedc40290b4050635842d9e5efd75415faa
+          path: trusted-build
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 16.20.2
+      - name: Verify tag and rebuild with trusted dependencies
+        id: verify
+        env:
+          TAG: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$SHA"
+          git merge-base --is-ancestor "$SHA" origin/main
+          cmp package.json trusted-build/package.json
+          cmp package-lock.json trusted-build/package-lock.json
+          test ! -L index.js
+          test ! -L lib
+          test ! -L dist
+          test -z "$(find lib dist -type l -print -quit)"
+          cd trusted-build
+          npm ci --ignore-scripts
+          cp ../index.js .
+          rm -rf lib dist
+          cp -R ../lib .
+          ./node_modules/.bin/ncc build index.js --license licenses.txt
+          diff -r ../dist dist
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+    concurrency:
+      group: release-publication
+      cancel-in-progress: false
+    steps:
+      - name: Publish release and move major tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.verify.outputs.tag }}
+          SHA: ${{ needs.verify.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # Resolve annotated and lightweight tags and reject a changed release ref.
+          actual=$(gh api "repos/$GH_REPO/commits/$TAG" --jq .sha)
+          test "$actual" = "$SHA"
+          gh release create "$TAG" --verify-tag --generate-notes
+          major="${TAG%%.*}"
+          if gh api "repos/$GH_REPO/git/ref/tags/$major" >/dev/null 2>&1; then
+            gh api --method PATCH "repos/$GH_REPO/git/refs/tags/$major" -f sha="$SHA" -F force=true
+          else
+            gh api --method POST "repos/$GH_REPO/git/refs" -f ref="refs/tags/$major" -f sha="$SHA"
+          fi
