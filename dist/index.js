@@ -7,11 +7,15 @@
 const core = __nccwpck_require__(2186);
 const tc = __nccwpck_require__(7784);
 const isSemver = __nccwpck_require__(3356);
+const fs = __nccwpck_require__(3292);
+const os = __nccwpck_require__(2037);
+const path = __nccwpck_require__(1017);
 
 const {
+  DEFAULT_VERSION,
   getDownloadObject,
-  getLatestVersion,
   setUpAuth,
+  verifyArchive,
 } = __nccwpck_require__(918);
 
 async function setup() {
@@ -24,7 +28,7 @@ async function setup() {
     if (publicKey) core.setSecret(publicKey);
 
     if (!version || version === 'latest') {
-      version = await getLatestVersion();
+      version = DEFAULT_VERSION;
     }
 
     if (!isSemver(version)) {
@@ -37,22 +41,24 @@ async function setup() {
     }
 
     // Download the specific version of the tool, e.g. as a tarball/zipball
-    const download = getDownloadObject(version);
+    const download = getDownloadObject(version, core.getInput('sha256'));
     core.info(`Downloading ${download.url}`);
 
     const pathToTarball = await tc.downloadTool(download.url);
-    core.info(`Downloaded to ${pathToTarball}`);
+    await verifyArchive(pathToTarball, download.digest, download.format);
+    core.info('CLI archive verified');
 
-    // Extract the tarball/zipball onto host runner
-    const extract = download.url.endsWith('.zip')
-      ? tc.extractZip
-      : tc.extractTar;
-    const pathToCLI = await extract(pathToTarball);
+    const extract = download.format === 'zip' ? tc.extractZip : tc.extractTar;
+    const extracted = await extract(pathToTarball);
+    const binaryName = os.platform() === 'win32' ? 'ticloud.exe' : 'ticloud';
+    const installDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'ticloud-action-'),
+    );
+    const binary = path.join(installDir, binaryName);
+    await fs.copyFile(path.join(extracted, binaryName), binary);
+    if (os.platform() !== 'win32') await fs.chmod(binary, 0o755);
 
-    core.info(`Add ${pathToCLI} to PATH`);
-    // Expose the tool by adding it to the PATH
-    core.addPath(pathToCLI);
-
+    core.addPath(installDir);
     await setUpAuth(publicKey, privateKey);
   } catch (e) {
     core.setFailed(e);
@@ -73,19 +79,52 @@ if (require.main === require.cache[eval('__filename')]) {
 
 const os = __nccwpck_require__(2037);
 const fs = __nccwpck_require__(3292);
+const { createReadStream } = __nccwpck_require__(7147);
 const path = __nccwpck_require__(1017);
 const crypto = __nccwpck_require__(6113);
-const core = __nccwpck_require__(2186);
-const http = __nccwpck_require__(6255);
+const { Buffer } = __nccwpck_require__(4300);
 const exec = __nccwpck_require__(1514);
 
-async function getLatestVersion() {
-  const client = new http.HttpClient('tidbcloud-cli-action');
-  const url =
-    'https://raw.githubusercontent.com/tidbcloud/tidbcloud-cli/main/latest-version';
-  const response = await client.get(url);
-  core.debug(`Response status code: ${response.message.statusCode}`);
-  return response.readBody();
+// Update these reviewed digests when changing the default CLI release.
+const DEFAULT_VERSION = '1.0.0-beta.11';
+const DEFAULT_DIGESTS = {
+  'darwin-amd64':
+    'c7619b34001ec99105f86d24b95f0d21b8edaf3dae858697314e0db5d5937200',
+  'darwin-arm64':
+    '9c6a9ecf0ed73fb15fb99b1e2459be6455df9ce2f4962f8aa3cde47ba1ff62b6',
+  'linux-amd64':
+    'af88a50ee088d3d9c95873ff3a7c166f4c554cb0e6d1900220e7ef0e97a5f439',
+  'linux-arm64':
+    'af69d9a98721f7051523eb4d1d11cc93c5cf45303f8a54e07c63239daaf9c12e',
+  'windows-amd64':
+    'b994419be1e9cc2700a34dcae41aa3360c76fce37ce0f278b2a75dcbcbc472d9',
+};
+
+async function verifyArchive(file, expectedDigest, format) {
+  if (!/^[a-f0-9]{64}$/i.test(expectedDigest)) {
+    throw new Error(
+      'A valid SHA-256 digest is required for this CLI version and platform',
+    );
+  }
+  const hash = crypto.createHash('sha256');
+  for await (const chunk of createReadStream(file)) hash.update(chunk);
+  if (hash.digest('hex') !== expectedDigest.toLowerCase()) {
+    throw new Error('CLI archive SHA-256 mismatch');
+  }
+
+  const handle = await fs.open(file, 'r');
+  try {
+    const header = Buffer.alloc(4);
+    const { bytesRead } = await handle.read(header, 0, header.length, 0);
+    const valid =
+      format === 'zip'
+        ? bytesRead === 4 &&
+          header.equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))
+        : bytesRead >= 2 && header[0] === 0x1f && header[1] === 0x8b;
+    if (!valid) throw new Error('CLI archive has an unexpected format');
+  } finally {
+    await handle.close();
+  }
 }
 
 async function setUpAuth(publicKey, privateKey) {
@@ -161,19 +200,32 @@ function mapOS(osName) {
   return mappings[osName] || osName;
 }
 
-function getDownloadObject(version) {
-  const platform = os.platform();
-  const filename = `ticloud_${version}_${mapOS(platform)}_${mapArch(
-    os.arch(),
-  )}`;
-  const extension = platform === 'win32' ? 'zip' : 'tar.gz';
-  const url = `https://github.com/tidbcloud/tidbcloud-cli/releases/download/v${version}/${filename}.${extension}`;
+function getDownloadObject(version, expectedDigest = '') {
+  const platform = mapOS(os.platform());
+  const arch = mapArch(os.arch());
+  const format = platform === 'windows' ? 'zip' : 'tar.gz';
+  const filename = `ticloud_${version}_${platform}_${arch}.${format}`;
+  const digest =
+    expectedDigest ||
+    (version === DEFAULT_VERSION && DEFAULT_DIGESTS[`${platform}-${arch}`]);
+  if (!digest || !/^[a-f0-9]{64}$/i.test(digest)) {
+    throw new Error(
+      'A valid SHA-256 digest is required for this CLI version and platform',
+    );
+  }
   return {
-    url,
+    url: `https://github.com/tidbcloud/tidbcloud-cli/releases/download/v${version}/${filename}`,
+    digest,
+    format,
   };
 }
 
-module.exports = { getDownloadObject, getLatestVersion, setUpAuth };
+module.exports = {
+  DEFAULT_VERSION,
+  getDownloadObject,
+  setUpAuth,
+  verifyArchive,
+};
 
 
 /***/ }),

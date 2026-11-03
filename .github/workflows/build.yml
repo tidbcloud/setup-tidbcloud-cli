@@ -23,5 +23,6 @@ jobs:
       - run: npm run format-check
       - run: npm run lint
       - run: node test/credentials.test.js
+      - run: node test/download.test.js
       - name: Verify no unstaged changes
         run: git diff --exit-code
