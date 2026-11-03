@@ -6,10 +6,14 @@ inputs:
   version:
     description: |-
       Version of the `ticloud` to install. If unspecified or set to "latest",
-      the latest available `ticloud` version for the target platform will be
-      installed. Example: "0.1.6".
+      the action's pinned default `ticloud` version will be installed. Example: "0.1.6".
     required: false
     default: latest
+  sha256:
+    description: |-
+      Expected SHA-256 digest of the platform-specific CLI archive. Required
+      for versions other than the action's pinned default version.
+    required: false
   api_public_key:
     description: |-
       The public key of TiDB Cloud api.
