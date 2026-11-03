@@ -49,3 +49,23 @@ The action supports the following inputs:
 ## License
 
 See [LICENSE](LICENSE).
+
+### Release security
+
+Releases are published after the default-branch release workflow independently
+rebuilds the tagged commit with the pinned build dependencies. The `release`
+environment must have required reviewers configured in GitHub; publication fails
+closed if they are missing. Configure reviewers who can independently approve
+releases, prevent self-review, and restrict deployment to the protected default
+branch (the release workflow runs on that branch). Protect `main` and the
+release workflow from unreviewed changes, and restrict creation or movement of
+`v*` tags, including `v0`, to authorized maintainers and the release workflow.
+Set the repository default workflow token permissions to read-only. Only create
+release tags on commits containing the hardened workflows: tagging an older
+commit can run that commit's old tag-triggered workflows. These repository
+settings are required for the integrity gate to be trustworthy.
+
+The release verifier pins its build dependencies to a commit in `release.yml`
+and requires the tagged `package.json` and lockfile to match. To update
+build dependencies, review the dependency changes and update that pin to an
+independently reviewed commit before releasing.
