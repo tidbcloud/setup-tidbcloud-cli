@@ -19,7 +19,9 @@ async function setup() {
     // Get version of tool to be installed
     let version = core.getInput('version');
     const privateKey = core.getInput('api_private_key');
+    if (privateKey) core.setSecret(privateKey);
     const publicKey = core.getInput('api_public_key');
+    if (publicKey) core.setSecret(publicKey);
 
     if (!version || version === 'latest') {
       version = await getLatestVersion();
@@ -70,6 +72,9 @@ if (require.main === require.cache[eval('__filename')]) {
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const os = __nccwpck_require__(2037);
+const fs = __nccwpck_require__(3292);
+const path = __nccwpck_require__(1017);
+const crypto = __nccwpck_require__(6113);
 const core = __nccwpck_require__(2186);
 const http = __nccwpck_require__(6255);
 const exec = __nccwpck_require__(1514);
@@ -84,16 +89,58 @@ async function getLatestVersion() {
 }
 
 async function setUpAuth(publicKey, privateKey) {
-  await exec.exec('ticloud', [
-    'config',
-    'create',
-    '--profile-name',
-    'default',
-    '--public-key',
-    publicKey,
-    '--private-key',
-    privateKey,
-  ]);
+  // Older ticloud versions require both flags, even when their values are empty.
+  await exec.exec(
+    'ticloud',
+    [
+      'config',
+      'create',
+      '--profile-name',
+      'default',
+      '--public-key',
+      '',
+      '--private-key',
+      '',
+    ],
+    { silent: true },
+  );
+
+  const configPath = path.join(os.homedir(), '.ticloud', 'config.toml');
+  const config = await fs.readFile(configPath, 'utf8');
+  const section = config.match(/^\[default\][ \t]*$/m);
+  if (!section) throw new Error('Could not find the default ticloud profile');
+
+  const start = section.index + section[0].length;
+  const remainder = config.slice(start);
+  const nextSection = remainder.search(/^[ \t]*\[/m);
+  const end = nextSection === -1 ? config.length : start + nextSection;
+  let profile = config.slice(start, end);
+  for (const [name, value] of [
+    ['public-key', publicKey],
+    ['private-key', privateKey],
+  ]) {
+    const entry = new RegExp(`^(${name}[ \\t]*=[ \\t]*)(?:""|'')[ \\t]*$`, 'm');
+    if (!entry.test(profile)) {
+      throw new Error(`Could not find empty ${name} in the ticloud profile`);
+    }
+    profile = profile.replace(
+      entry,
+      (_, prefix) => prefix + JSON.stringify(value),
+    );
+  }
+
+  // Replace atomically so a failed write cannot corrupt an existing config.
+  const temporaryPath = `${configPath}.${crypto.randomBytes(16).toString('hex')}.tmp`;
+  try {
+    await fs.writeFile(
+      temporaryPath,
+      config.slice(0, start) + profile + config.slice(end),
+      { mode: 0o600, flag: 'wx' },
+    );
+    await fs.rename(temporaryPath, configPath);
+  } finally {
+    await fs.rm(temporaryPath, { force: true });
+  }
 }
 
 // arch in [x64...] (https://nodejs.org/api/os.html#os_os_arch)
@@ -29710,6 +29757,14 @@ module.exports = require("events");
 
 "use strict";
 module.exports = require("fs");
+
+/***/ }),
+
+/***/ 3292:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("fs/promises");
 
 /***/ }),
 
