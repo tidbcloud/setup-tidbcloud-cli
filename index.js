@@ -13,7 +13,9 @@ async function setup() {
     // Get version of tool to be installed
     let version = core.getInput('version');
     const privateKey = core.getInput('api_private_key');
+    if (privateKey) core.setSecret(privateKey);
     const publicKey = core.getInput('api_public_key');
+    if (publicKey) core.setSecret(publicKey);
 
     if (!version || version === 'latest') {
       version = await getLatestVersion();
