@@ -21,7 +21,9 @@ async function main() {
     os.homedir = () => home;
     await fs.mkdir(path.dirname(configPath));
     exec.exec = async (command, args, options) => {
-      assert.strictEqual(command, 'ticloud');
+      assert.strictEqual(command, '/test/ticloud');
+      assert.strictEqual(options.env.HOME, home);
+      assert.strictEqual(options.env.USERPROFILE, home);
       assert.deepStrictEqual(args, [
         'config',
         'create',
@@ -38,7 +40,7 @@ async function main() {
         "current-profile = 'default'\n\n[default]\nprivate-key = ''\npublic-key = ''\n\n[other]\nprivate-key = 'preserved'\n",
       );
     };
-    await setUpAuth('public"key', 'private\\key');
+    await setUpAuth('public"key', 'private\\key', home, '/test/ticloud');
     const config = await fs.readFile(configPath, 'utf8');
     assert(config.includes('public-key = "public\\"key"'));
     assert(config.includes('private-key = "private\\\\key"'));
@@ -49,7 +51,10 @@ async function main() {
 
     const malformed = "[default]\nprivate-key = 'not-empty'\npublic-key = ''\n";
     exec.exec = async () => fs.writeFile(configPath, malformed);
-    await assert.rejects(setUpAuth('public', 'private'), /empty private-key/);
+    await assert.rejects(
+      setUpAuth('public', 'private', home, '/test/ticloud'),
+      /empty private-key/,
+    );
     assert.strictEqual(await fs.readFile(configPath, 'utf8'), malformed);
 
     core.getInput = (name) => {
