@@ -73,3 +73,18 @@ The release verifier pins its build dependencies to a commit in `release.yml`
 and requires the tagged `package.json` and lockfile to match. To update
 build dependencies, review the dependency changes and update that pin to an
 independently reviewed commit before releasing.
+
+### Credential lifetime
+
+The action stores API keys in a private directory under `RUNNER_TEMP`. The
+`ticloud` launcher uses that directory as its HOME without changing HOME for
+other tools. A post-job step removes the directory, including credentials and
+the installed CLI. Setup failures also remove it immediately. Existing
+`$HOME/.ticloud` configuration is not modified.
+
+Credentials remain readable to processes running as the same OS user during
+the job. Do not archive the temporary directory. Post-job cleanup cannot run
+after a runner crash or forced termination; use ephemeral runners or ensure
+runner temporary storage is cleaned between jobs. Previously stored keys in
+`$HOME/.ticloud/config.toml` require manual removal. Revoke and replace any API
+key suspected of exposure in the TiDB Cloud console.

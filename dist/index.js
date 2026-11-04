@@ -10,6 +10,7 @@ const isSemver = __nccwpck_require__(3356);
 const fs = __nccwpck_require__(3292);
 const os = __nccwpck_require__(2037);
 const path = __nccwpck_require__(1017);
+const process = __nccwpck_require__(7282);
 
 const {
   DEFAULT_VERSION,
@@ -18,7 +19,13 @@ const {
   verifyArchive,
 } = __nccwpck_require__(918);
 
+async function cleanup() {
+  const directory = core.getState('directory');
+  if (directory) await fs.rm(directory, { recursive: true, force: true });
+}
+
 async function setup() {
+  let installDir;
   try {
     // Get version of tool to be installed
     let version = core.getInput('version');
@@ -51,24 +58,43 @@ async function setup() {
     const extract = download.format === 'zip' ? tc.extractZip : tc.extractTar;
     const extracted = await extract(pathToTarball);
     const binaryName = os.platform() === 'win32' ? 'ticloud.exe' : 'ticloud';
-    const installDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'ticloud-action-'),
+    if (!process.env.RUNNER_TEMP) throw new Error('RUNNER_TEMP is required');
+    installDir = await fs.mkdtemp(
+      path.join(process.env.RUNNER_TEMP, 'ticloud-action-'),
     );
-    const binary = path.join(installDir, binaryName);
+    core.saveState('directory', installDir);
+    const home = path.join(installDir, 'home');
+    await fs.mkdir(home, { mode: 0o700 });
+    await fs.mkdir(path.join(installDir, 'bin'));
+    const binary = path.join(installDir, 'bin', binaryName);
     await fs.copyFile(path.join(extracted, binaryName), binary);
     if (os.platform() !== 'win32') await fs.chmod(binary, 0o755);
 
+    await setUpAuth(publicKey, privateKey, home, binary);
+    // Scope HOME to the CLI process so other tools keep their original HOME.
+    const launcher = os.platform() === 'win32' ? 'ticloud.cmd' : 'ticloud';
+    const script =
+      os.platform() === 'win32'
+        ? '@echo off\r\nsetlocal\r\nset "HOME=%~dp0home"\r\nset "USERPROFILE=%~dp0home"\r\n"%~dp0bin\\ticloud.exe" %*\r\nexit /b %errorlevel%\r\n'
+        : '#!/bin/sh\nTICLOUD_ACTION_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1\nexport HOME="$TICLOUD_ACTION_DIR/home"\nexec "$TICLOUD_ACTION_DIR/bin/ticloud" "$@"\n';
+    await fs.writeFile(path.join(installDir, launcher), script, {
+      mode: 0o700,
+    });
     core.addPath(installDir);
-    await setUpAuth(publicKey, privateKey);
   } catch (e) {
+    if (installDir) await fs.rm(installDir, { recursive: true, force: true });
     core.setFailed(e);
   }
 }
 
 module.exports = setup;
+module.exports.cleanup = cleanup;
 
 if (require.main === require.cache[eval('__filename')]) {
-  setup();
+  const isPost = core.getState('isPost') === 'true';
+  if (!isPost) core.saveState('isPost', 'true');
+  const run = isPost ? cleanup : setup;
+  run().catch((error) => core.setFailed(error));
 }
 
 
@@ -83,6 +109,7 @@ const { createReadStream } = __nccwpck_require__(7147);
 const path = __nccwpck_require__(1017);
 const crypto = __nccwpck_require__(6113);
 const { Buffer } = __nccwpck_require__(4300);
+const process = __nccwpck_require__(7282);
 const exec = __nccwpck_require__(1514);
 
 // Update these reviewed digests when changing the default CLI release.
@@ -127,10 +154,10 @@ async function verifyArchive(file, expectedDigest, format) {
   }
 }
 
-async function setUpAuth(publicKey, privateKey) {
+async function setUpAuth(publicKey, privateKey, home, binary) {
   // Older ticloud versions require both flags, even when their values are empty.
   await exec.exec(
-    'ticloud',
+    binary,
     [
       'config',
       'create',
@@ -141,10 +168,10 @@ async function setUpAuth(publicKey, privateKey) {
       '--private-key',
       '',
     ],
-    { silent: true },
+    { silent: true, env: { ...process.env, HOME: home, USERPROFILE: home } },
   );
 
-  const configPath = path.join(os.homedir(), '.ticloud', 'config.toml');
+  const configPath = path.join(home, '.ticloud', 'config.toml');
   const config = await fs.readFile(configPath, 'utf8');
   const section = config.match(/^\[default\][ \t]*$/m);
   if (!section) throw new Error('Could not find the default ticloud profile');
@@ -29897,6 +29924,14 @@ module.exports = require("path");
 
 "use strict";
 module.exports = require("perf_hooks");
+
+/***/ }),
+
+/***/ 7282:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("process");
 
 /***/ }),
 
